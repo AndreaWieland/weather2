@@ -1,15 +1,22 @@
-import requests, json, urllib.parse, datetime
-import flask
-from flask import request, jsonify
-from functions import *
+#TO DO:
+# error code handling from both here and openweather
+# detecting if latitude and longitude were sent from the browser and using that
+# if an address is not found handling
 
+
+#flask for routes, requests and json for external API calls, parse for url encoding
+import requests, json, urllib.parse, datetime, flask
+from flask import request, jsonify #sending back json to GET requests
+from functions import * #some small reusable functions
+from flask_cors import CORS
 
 #initiate flask app
 app = flask.Flask(__name__)
+CORS(app)
 app.config["DEBUG"] = True
 
 
-#get auth keys
+#get auth keys for HERE and openweather
 with open("auth.json", "r") as read_file:
     auth = json.load(read_file)
 geoKey = auth['here_key']
@@ -21,13 +28,13 @@ def api_id():
     if 'location' in request.args:
         #get address from params
         loc = request.args['location']
-        #turn it back to url encoding. note: is there a way to keep the raw in flask?
+        #turn it back to url encoding. note: is there a way to keep this raw in flask?
         urlLocation = urllib.parse.quote(loc)
         #call location api
         geoReq = requests.get(f'https://geocode.search.hereapi.com/v1/geocode?q={urlLocation}&apiKey={geoKey}')
-        #if the search comes up empty, the json is just an empty array. how to handle?
         geo = geoReq.json()
 
+        #extracting latitude and longitude 
         lat = round(geo['items'][0]['position']['lat'],3)
         lon = round(geo['items'][0]['position']['lng'],3)
 

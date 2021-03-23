@@ -17,26 +17,38 @@ app.config["DEBUG"] = True
 
 
 #get auth keys for HERE and openweather
-with open("auth.json", "r") as read_file:
+with open("./auth.json", "r") as read_file:
     auth = json.load(read_file)
 geoKey = auth['here_key']
 weatherKey = auth['weather_key']
 
 
-@app.route('/weather_api', methods=['GET'])
+@app.route('/', methods=['GET'])
 def api_id():
-    if 'location' in request.args:
-        #get address from params
-        loc = request.args['location']
-        #turn it back to url encoding. note: is there a way to keep this raw in flask?
-        urlLocation = urllib.parse.quote(loc)
-        #call location api
-        geoReq = requests.get(f'https://geocode.search.hereapi.com/v1/geocode?q={urlLocation}&apiKey={geoKey}')
-        geo = geoReq.json()
-
-        #extracting latitude and longitude 
-        lat = round(geo['items'][0]['position']['lat'],3)
-        lon = round(geo['items'][0]['position']['lng'],3)
+    #for later: return different content for command line!
+    #if 'curl' in str(request.user_agent):
+    #    return(str(request.user_agent))
+    if 'location' in request.args or ('latitude' in request.args and 'longitude' in request.args):
+        #using lat and long from html geolocation api
+        if 'latitude' in request.args:
+            lat = request.args['latitude']
+            lon = request.args['longitude']
+        #translating a user input complete or partial address to lat and long
+        if 'location' in request.args:
+            loc = request.args['location']
+            #call location api
+            geoReq = requests.get(f'https://geocode.search.hereapi.com/v1/geocode?q={loc}&apiKey={geoKey}')
+            geo = geoReq.json()
+            
+            if len(geo['items']) == 0:
+                locationError = {
+                    'status':'NF',
+                    'message': 'Location not found. Try another query'
+                }
+                return jsonify(locationError)
+            #extracting latitude and longitude 
+            lat = round(geo['items'][0]['position']['lat'],3)
+            lon = round(geo['items'][0]['position']['lng'],3)
 
         req = requests.get(f'https://api.openweathermap.org/data/2.5/onecall?lat={lat}&lon={lon}&exclude=minutely,hourly&appid={weatherKey}')
 
@@ -79,4 +91,5 @@ def api_id():
         return "No data available."
 
 
-app.run()
+
+app.run(host='0.0.0.0',port=5000)
